@@ -1,5 +1,5 @@
 <?php
-defined('BASEPATH') OR exit('No direct script access allowed');
+defined('BASEPATH') or exit('No direct script access allowed');
 
 /*
 |------------------------------------------------------------
@@ -33,10 +33,15 @@ $route['admin/posts']              = 'admin/Posts/index';
 $route['admin/posts/create']       = 'admin/Posts/create';
 $route['admin/posts/store']        = 'admin/Posts/store';
 $route['admin/posts/edit/(:num)']  = 'admin/Posts/edit/$1';
-$route['admin/posts/update/(:num)']= 'admin/Posts/update/$1';
-$route['admin/posts/delete/(:num)']= 'admin/Posts/delete/$1';
-$route['admin/posts/toggle/(:num)']= 'admin/Posts/toggle/$1';
+$route['admin/posts/update/(:num)'] = 'admin/Posts/update/$1';
+$route['admin/posts/delete/(:num)'] = 'admin/Posts/delete/$1';
+$route['admin/posts/toggle/(:num)'] = 'admin/Posts/toggle/$1';
 
 // ── ADMIN SETTINGS ────────────────────────────────────────
 $route['admin/settings']           = 'admin/Settings/index';
 $route['admin/settings/update']    = 'admin/Settings/update';
+
+// ── ADMIN ENQUIRIES ───────────────────────────────────────
+$route['admin/enquiries']                  = 'admin/Enquiries/index';
+$route['admin/enquiries/view/(:num)']      = 'admin/Enquiries/view/$1';
+$route['admin/enquiries/delete/(:num)']    = 'admin/Enquiries/delete/$1';

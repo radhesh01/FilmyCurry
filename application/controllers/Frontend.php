@@ -1,5 +1,6 @@
 <?php
 defined('BASEPATH') OR exit('No direct script access allowed');
+/* FILE: application/controllers/Frontend.php — replace existing */
 
 class Frontend extends CI_Controller {
 
@@ -7,7 +8,7 @@ class Frontend extends CI_Controller {
 
     public function __construct() {
         parent::__construct();
-        $this->load->model(['Post_model', 'Setting_model']);
+        $this->load->model(['Post_model', 'Setting_model', 'Enquiry_model']);
         $this->settings = $this->Setting_model->get_flat();
     }
 
@@ -26,47 +27,81 @@ class Frontend extends CI_Controller {
     }
 
     public function about() {
-        $data['settings'] = $this->settings;
+        $data['settings']   = $this->settings;
+        $data['page_title'] = 'About';
         $this->_render('frontend/about', $data);
     }
 
     public function work() {
-        $data['settings'] = $this->settings;
-        $data['posts']    = $this->Post_model->get_active();
+        $data['settings']   = $this->settings;
+        $data['posts']      = $this->Post_model->get_active();
+        $data['page_title'] = 'Our Work';
         $this->_render('frontend/work', $data);
     }
 
     public function contact() {
-        $data['settings'] = $this->settings;
+        $data['settings']   = $this->settings;
+        $data['page_title'] = "Let's Talk";
         $this->_render('frontend/contact', $data);
     }
 
     public function send_contact() {
-        $this->load->library('form_validation');
-        $this->form_validation->set_rules('name',    'Name',    'required|trim');
-        $this->form_validation->set_rules('email',   'Email',   'required|valid_email');
+        $this->load->library(['form_validation', 'upload']);
+        $this->form_validation->set_rules('name',    'Name',    'required|trim|max_length[100]');
+        $this->form_validation->set_rules('email',   'Email',   'required|valid_email|trim');
         $this->form_validation->set_rules('message', 'Message', 'required|trim');
 
-        if ($this->form_validation->run()) {
-            // Basic mail — swap for SMTP if needed
-            $to      = $this->settings['site_email'] ?? 'contact@filmycurry.com';
-            $subject = 'New Contact: ' . $this->input->post('name', TRUE);
-            $body    = "Name: "    . $this->input->post('name', TRUE) . "\n"
-                     . "Email: "   . $this->input->post('email', TRUE) . "\n"
-                     . "Phone: "   . $this->input->post('phone', TRUE) . "\n"
-                     . "Budget: "  . $this->input->post('budget', TRUE) . "\n\n"
-                     . "Message:\n" . $this->input->post('message', TRUE);
-            @mail($to, $subject, $body, 'From: ' . $this->input->post('email', TRUE));
-            $this->session->set_flashdata('success', 'Message sent! We\'ll get back to you soon.');
-        } else {
-            $this->session->set_flashdata('error', validation_errors());
+        if (!$this->form_validation->run()) {
+            $this->session->set_flashdata('error', strip_tags(validation_errors()));
+            redirect('contact');
+            return;
         }
+
+        $attachment = '';
+        if (!empty($_FILES['attachment']['name'])) {
+            $dir = FCPATH . 'assets/images/uploads/enquiries/';
+            if (!is_dir($dir)) @mkdir($dir, 0755, TRUE);
+            $this->upload->initialize(['upload_path'=>$dir,'allowed_types'=>'pdf|jpg|jpeg|png|webp','max_size'=>5120,'encrypt_name'=>TRUE]);
+            if ($this->upload->do_upload('attachment')) {
+                $attachment = $this->upload->data('file_name');
+            }
+        }
+
+        $this->Enquiry_model->create([
+            'name'       => $this->input->post('name', TRUE),
+            'email'      => $this->input->post('email', TRUE),
+            'phone'      => $this->input->post('phone', TRUE),
+            'company'    => $this->input->post('company', TRUE),
+            'budget'     => $this->input->post('budget', TRUE),
+            'service'    => $this->input->post('service', TRUE),
+            'message'    => $this->input->post('message', TRUE),
+            'attachment' => $attachment,
+            'is_read'    => 0,
+        ]);
+
+        $to   = $this->settings['site_email'] ?? 'contact@filmycurry.com';
+        $from = $this->input->post('email', TRUE);
+        $name = $this->input->post('name', TRUE);
+        @mail($to, '[FilmyCurry] New Enquiry from ' . $name,
+            "Name: $name\nEmail: $from\nPhone: " . $this->input->post('phone',TRUE) .
+            "\nCompany: " . $this->input->post('company',TRUE) .
+            "\nBudget: " . $this->input->post('budget',TRUE) .
+            "\nService: " . $this->input->post('service',TRUE) .
+            "\n\nMessage:\n" . $this->input->post('message',TRUE) .
+            "\n\nAdmin: " . base_url('admin/enquiries'),
+            "From: FilmyCurry <noreply@filmycurry.com>\r\nReply-To: $from"
+        );
+
+        $this->session->set_flashdata('success', "Thanks $name! We'll respond within 24-48 hours. 🚀");
         redirect('contact');
     }
 
     private function _render($view, $data = []) {
-        // Pass settings to layout
         $data['_settings'] = $this->settings;
-        $this->load->view('layouts/frontend_layout_v2', ['content' => $this->load->view($view, $data, TRUE), 'data' => $data]);
+        $data['_uri']      = uri_string();
+        $this->load->view('layouts/frontend_layout_v5', [
+            'content' => $this->load->view($view, $data, TRUE),
+            'data'    => $data,
+        ]);
     }
 }
